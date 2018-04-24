@@ -1,5 +1,5 @@
 const Host = require('./host');
 
-(function() {
+(function(Host) {
 
-})();
+})(Host);

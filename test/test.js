@@ -1,8 +1,8 @@
 const Host = require('../src/host');
 
-(function() {
+(function(Host) {
 
     // Test
     Host.newEndpoint('/target', 200, null, null, 'GET');
 
-})();
+})(Host);
