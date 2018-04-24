@@ -1,0 +1,15 @@
+{
+  "name": "server-mocker",
+  "version": "1.0.0",
+  "description": "Mock server endpoint responses",
+  "main": "main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node test/test.js"
+  },
+  "author": "Jianhao Xu",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.16.3"
+  }
+}
