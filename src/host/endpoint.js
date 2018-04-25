@@ -1,6 +1,8 @@
-module.exports = function(app, Logger) {
+module.exports = function(app, Logger, config) {
 
     const httpMethods = { GET: 'GET', POST: 'POST', PUT: 'PUT' };
+
+    const placeholdersPattern = config.placeholdersPattern;
 
     function Endpoint(target, status, body, headers, method) {
         this.listenTarget = target;

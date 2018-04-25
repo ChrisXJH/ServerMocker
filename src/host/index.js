@@ -2,7 +2,7 @@ const express = require('express');
 const EndpointFactory = require('./endpoint');
 const config = require('../common/config');
 const app = express();
-const Endpoint = EndpointFactory(app, console);
+const Endpoint = EndpointFactory(app, console, config);
 
 
 module.exports = (function (app, Endpoint, Logger, config) {
