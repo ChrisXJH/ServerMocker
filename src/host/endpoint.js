@@ -30,48 +30,75 @@ module.exports = function(app, Logger, config) {
     };
 
     Endpoint.prototype.listenGet = function () {
-        app.get(this.listenTarget, (req, res) => this.respond(req, res));
+        let _this = this;
+        app.get(this.listenTarget, (req, res) => _this.respond(req, res));
     };
+
+    function acceptRequest(req, res) {
+        return new Promise((resolve, reject) => {
+            resolve({req: req, res: res});
+        });
+    }
 
     Endpoint.prototype.listenPost = function () {
         app.post(this.listenTarget, (req, res) => this.respond(req, res));
     };
 
     Endpoint.prototype.respond = function (req, res) {
-        Logger.log(`Responding to request ${this.listenMethod}: ${this.listenTarget}`);
-        preparePromise(res)
-            .then((res) => this.setHeaders(res))
-            .then((res) => this.processBody(res))
-            .then((res) => this.send(res))
-            .catch(err => {
-                Logger.error(err);
-            });
+        let _this = this;
+        acceptRequest(req, res)
+                            .then(request => _this.processRequest(request))
+                            .then(request => _this.setResStatus(request))
+                            .then(request => _this.setResHeaders(request))
+                            .then(request => _this.setResBody(request))
+                            .then(request => _this.send(request))
+                            .catch(err => {
+                                Logger.error(err);
+                            })
     };
 
-    Endpoint.prototype.setHeaders = function (res) {
+    Endpoint.prototype.processRequest = function (request) {
+        this.registerVariables(request.req);
+        return request;
+    };
+
+    Endpoint.prototype.registerVariables = function (req) {
+        let json = req.body;
+        for (let key in json) {
+            this.setVariable[key] = json[key];
+        }
+        return req;
+    };
+
+    Endpoint.prototype.setResStatus = function (request) {
+        request.status = this.status;
+        return request;
+    };
+
+    Endpoint.prototype.setResHeaders = function (request) {
         if (this.headers != null) {
             Logger.log(`Headers: ${JSON.stringify(this.headers)}`);
-            res.set(this.headers);
+            request.headers = this.headers;
         }
-        return res;
+        return request;
     };
 
-    Endpoint.prototype.processBody = function (res) {
-        if (this.body == null) return res;
+    Endpoint.prototype.setResBody = function (request) {
+        if (this.body == null) return request;
         let bodyStr = JSON.stringify(this.body);
         let matches = matchPatterns(bodyStr, PLACEHOLDER_PATTERN);
         for(let match of matches)
             bodyStr = bodyStr.replace(match, this.evaluatePlaceholder(match));
-        this.body = parseJSON(bodyStr);
-        return res;
+        request.body = parseJSON(bodyStr);
+        return request;
     };
 
-    Endpoint.prototype.send = function (res) {
-        let resBody = this.body != null ? this.body : '';
-        Logger.log(`Status: ${this.status}`);
+    Endpoint.prototype.send = function (request) {
+        let resBody = request.body != null ? request.body : '';
+        Logger.log(`Status: ${request.status}`);
         Logger.log(`Body: ${JSON.stringify(resBody)}`);
-        res.status(this.status).send(resBody);
-        return res;
+        request.res.status(request.status).send(resBody);
+        return request;
     };
 
     Endpoint.prototype.evaluatePlaceholder = function (str) {
