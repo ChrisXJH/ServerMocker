@@ -22,14 +22,15 @@ module.exports = function(app, Logger, config) {
 
     Endpoint.prototype.listen = function () {
         Logger.log(`Start accepting ${this.listenMethod} requests on target "${this.listenTarget}"`);
-        switch(this.listenMethod) {
-            case httpMethods.POST:
-            this.listenPost();
-            break;
 
-            case httpMethods.GET:
-            default:
+        if (this.listenMethod === httpMethods.POST) {
+            this.listenPost();
+        }
+        else if (this.listenMethod === httpMethods.GET) {
             this.listenGet();
+        }
+        else {
+            throw new Error(`Unsupported http method: "${this.listenMethod}".`);
         }
     };
 

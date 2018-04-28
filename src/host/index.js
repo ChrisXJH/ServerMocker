@@ -11,8 +11,9 @@ module.exports = (function (app, Endpoint, Logger, config) {
 
     const PORT = config.port;
 
-    Logger.log(`Start listening on port ${PORT}!`);
-    app.listen(PORT);
+    let server = app.listen(PORT, () => {
+        Logger.log(`Start listening on port ${PORT}!`);
+    });
 
     function newEndpoint(target, status, body, headers, method) {
         let endpoint = new Endpoint(target, status, body, headers, method);
@@ -20,8 +21,13 @@ module.exports = (function (app, Endpoint, Logger, config) {
         return endpoint;
     }
 
+    function destroy() {
+        server.close();
+    }
+
     return {
-        newEndpoint: newEndpoint
+        newEndpoint: newEndpoint,
+        destroy: destroy
     };
 
 })(app, Endpoint, console, config);
