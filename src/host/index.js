@@ -1,9 +1,11 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const EndpointFactory = require('./endpoint');
 const config = require('../common/config');
 const app = express();
 const Endpoint = EndpointFactory(app, console, config);
 
+app.use(bodyParser.json());
 
 module.exports = (function (app, Endpoint, Logger, config) {
 
