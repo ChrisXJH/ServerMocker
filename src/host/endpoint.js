@@ -1,9 +1,13 @@
 module.exports = function(app, Logger, config) {
 
-    const httpMethods = { GET: 'GET', POST: 'POST', PUT: 'PUT' };
+    // Supported http methods
+    const httpMethods = { GET: 'GET', POST: 'POST' };
 
-    const PLACEHOLDER_PATTERN = /\${[A-Za-z]{1,}[A-Za-z0-9]*}/g;
+    // Regular expression used to identify placeholders
+    const PLACEHOLDER_PATTERN = /\{{[A-Za-z]{1,}[A-Za-z0-9]*}}/g;
 
+    // Regular expression pattern representing placeholder naming rules used to
+    // identify the variable name
     const PLACEHOLDER_RULE = /[A-Za-z]{1,}[A-Za-z0-9]*/;
 
 
@@ -34,12 +38,6 @@ module.exports = function(app, Logger, config) {
         app.get(this.listenTarget, (req, res) => _this.respond(req, res));
     };
 
-    function acceptRequest(req, res) {
-        return new Promise((resolve, reject) => {
-            resolve({req: req, res: res});
-        });
-    }
-
     Endpoint.prototype.listenPost = function () {
         app.post(this.listenTarget, (req, res) => this.respond(req, res));
     };
@@ -47,14 +45,15 @@ module.exports = function(app, Logger, config) {
     Endpoint.prototype.respond = function (req, res) {
         let _this = this;
         acceptRequest(req, res)
-                            .then(request => _this.processRequest(request))
-                            .then(request => _this.setResStatus(request))
-                            .then(request => _this.setResHeaders(request))
-                            .then(request => _this.setResBody(request))
-                            .then(request => _this.send(request))
-                            .catch(err => {
-                                Logger.error(err);
-                            })
+            .then(request => _this.processRequest(request))
+            .then(request => _this.setResStatus(request))
+            .then(request => _this.setResHeaders(request))
+            .then(request => _this.setResBody(request))
+            .then(request => _this.sendResponse(request))
+            .then(request => _this.cleanup())
+            .catch(err => {
+                Logger.error(err);
+            });
     };
 
     Endpoint.prototype.processRequest = function (request) {
@@ -62,11 +61,22 @@ module.exports = function(app, Logger, config) {
         return request;
     };
 
+    /**
+     * Register key-value pairs found in the request headers and body
+     * @author Jianhao Xu (Chris)
+     * @date   2018-04-28
+     * @param  {[type]}   req [description]
+     * @return {[type]}
+     */
     Endpoint.prototype.registerVariables = function (req) {
-        let json = req.body;
-        for (let key in json) {
-            this.setVariable[key] = json[key];
-        }
+        let headers = req.headers,
+            body = req.body;
+        // Register fields in headers
+        for (let key in headers)
+            this.setVariable(key, headers[key]);
+        // Register fields in body
+        for (let key in body)
+            this.setVariable(key, body[key]);
         return req;
     };
 
@@ -87,13 +97,23 @@ module.exports = function(app, Logger, config) {
         if (this.body == null) return request;
         let bodyStr = JSON.stringify(this.body);
         let matches = matchPatterns(bodyStr, PLACEHOLDER_PATTERN);
-        for(let match of matches)
-            bodyStr = bodyStr.replace(match, this.evaluatePlaceholder(match));
+        for(let match of matches) {
+            let val = this.evaluatePlaceholder(match);
+            // Do not replace if the placeholder cannot be evaluated
+            if (val != null) bodyStr = bodyStr.replace(match, val);
+        }
         request.body = parseJSON(bodyStr);
         return request;
     };
 
-    Endpoint.prototype.send = function (request) {
+    /**
+     * Send out the response
+     * @author Jianhao Xu (Chris)
+     * @date   2018-04-28
+     * @param  {[type]}   request [description]
+     * @return {[type]}
+     */
+    Endpoint.prototype.sendResponse = function (request) {
         let resBody = request.body != null ? request.body : '';
         Logger.log(`Status: ${request.status}`);
         Logger.log(`Body: ${JSON.stringify(resBody)}`);
@@ -105,6 +125,22 @@ module.exports = function(app, Logger, config) {
         let key = matchPatterns(str, PLACEHOLDER_RULE);
         return this.variables[key[0]];
     };
+
+    /**
+     * Clean up registered variable values
+     * @author Jianhao Xu (Chris)
+     * @date   2018-04-28
+     * @return {[type]}
+     */
+    Endpoint.prototype.cleanup = function () {
+        this.variables = {};
+    };
+
+    function acceptRequest(req, res) {
+        return new Promise((resolve, reject) => {
+            resolve({req: req, res: res});
+        });
+    }
 
     function preparePromise(obj) {
         return new Promise((resolve, reject) => {
